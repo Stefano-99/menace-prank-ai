@@ -33,7 +33,7 @@ export default function IMessageSimulator({
   }, [messages, isTyping, currentTypingText]);
 
   return (
-    <div className="w-[375px] h-[812px] mx-auto bg-black flex flex-col shrink-0 relative" style={{ fontFamily: '-apple-system, "SF Pro Text", "Helvetica Neue", sans-serif', overflow: 'hidden' }}>
+    <div className="w-[375px] h-[812px] mx-auto bg-black flex flex-col shrink-0 relative" style={{ fontFamily: '"SF Pro Display", -apple-system, "Helvetica Neue", sans-serif', overflow: 'hidden' }}>
       {/* iMessage header */}
       <div
         className="absolute top-0 left-0 w-full z-[100] flex flex-col"
