@@ -97,7 +97,7 @@ export default function ScriptEditor({
   return (
     <div className="w-full max-w-md space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">FakeChat</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Menace Prank Simulator</h1>
         <p className="text-sm text-muted-foreground">
           Simulate realistic conversations for your videos
         </p>
