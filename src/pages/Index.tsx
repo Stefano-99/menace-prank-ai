@@ -14,50 +14,45 @@ const Index = () => {
   const [pendingScript, setPendingScript] = useState("");
   const [pendingSpeed, setPendingSpeed] = useState(1);
   const [showKeyboard, setShowKeyboard] = useState(false);
-  const [isGroup, setIsGroup] = useState(false);
-  const [participants, setParticipants] = useState<string[]>([]);
   const playback = useChatPlayback();
   const recorder = useRecorder();
   const simulatorRef = useRef<HTMLDivElement>(null);
 
   const handlePlay = useCallback(
     (script: string, speed: number) => {
-      const parsed = parseScript(script, images, isGroup);
-      if (parsed.contact !== "Contact") setContactName(parsed.contact);
-      if (parsed.participants) setParticipants(parsed.participants);
+      const parsed = parseScript(script, images);
+    if (parsed.contact !== "Contact") setContactName(parsed.contact);
       playback.play(parsed.messages, speed);
     },
-    [playback, images, isGroup]
+    [playback, images]
   );
 
   const handleExport = useCallback(
     (script: string, speed: number) => {
       if (!simulatorRef.current) return;
-      const parsed = parseScript(script, images, isGroup);
+      const parsed = parseScript(script, images);
       if (parsed.contact !== "Contact") setContactName(parsed.contact);
-      if (parsed.participants) setParticipants(parsed.participants);
       playback.reset();
       recorder.startExport(simulatorRef.current, parsed.messages, speed);
     },
-    [playback, recorder, images, isGroup]
+    [playback, recorder, images]
   );
 
   const handleStartPreview = useCallback(
     (script: string, speed: number) => {
-      const parsed = parseScript(script, images, isGroup);
+      const parsed = parseScript(script, images);
       if (parsed.contact !== "Contact") setContactName(parsed.contact);
-      if (parsed.participants) setParticipants(parsed.participants);
       setPendingScript(script);
       setPendingSpeed(speed);
       playback.reset();
       setPreviewMode(true);
     },
-    [playback, images, isGroup]
+    [playback, images]
   );
 
   useEffect(() => {
     if (previewMode && pendingScript) {
-      const parsed = parseScript(pendingScript, images, isGroup);
+      const parsed = parseScript(pendingScript, images);
       const timer = setTimeout(() => {
         playback.play(parsed.messages, pendingSpeed);
       }, 400);
@@ -103,8 +98,6 @@ const Index = () => {
             typingSender={displayState.typingSender}
             currentTypingText={displayState.currentTypingText}
             showKeyboard={showKeyboard}
-            isGroup={isGroup}
-            participants={participants}
           />
         </div>
       </div>
@@ -129,8 +122,6 @@ const Index = () => {
         onImagesChange={setImages}
         showKeyboard={showKeyboard}
         onShowKeyboardChange={setShowKeyboard}
-        isGroup={isGroup}
-        onIsGroupChange={setIsGroup}
       />
 
       <div className="shrink-0" ref={simulatorRef}>
@@ -142,8 +133,6 @@ const Index = () => {
           typingSender={displayState.typingSender}
           currentTypingText={displayState.currentTypingText}
           showKeyboard={showKeyboard}
-          isGroup={isGroup}
-          participants={participants}
         />
       </div>
 

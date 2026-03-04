@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ChatMessage, getParticipantColor } from "@/hooks/useChatPlayback";
+import { ChatMessage } from "@/hooks/useChatPlayback";
 import ChatKeyboard from "./ChatKeyboard";
 
 interface Props {
@@ -10,8 +10,6 @@ interface Props {
   typingSender: "me" | "them";
   currentTypingText: string;
   showKeyboard?: boolean;
-  isGroup?: boolean;
-  participants?: string[];
 }
 
 function formatTime() {
@@ -27,8 +25,6 @@ export default function IMessageSimulator({
   typingSender,
   currentTypingText,
   showKeyboard = false,
-  isGroup = false,
-  participants = [],
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,36 +66,18 @@ export default function IMessageSimulator({
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
               <path d="M9 1L1 9L9 17" stroke="#0a84ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span className="text-[17px]">{isGroup ? "" : "2"}</span>
+            <span className="text-[17px]">2</span>
           </div>
 
           <div className="flex flex-col items-center justify-center">
-            {isGroup ? (
-              <>
-                {/* Group avatar - overlapping circles */}
-                <div className="relative w-[44px] h-[40px]">
-                  <div className="absolute top-0 left-[2px] w-[28px] h-[28px] rounded-full bg-[#636366] flex items-center justify-center text-[12px] font-medium text-white border-[2px] border-black z-10">
-                    {participants[0]?.[0]?.toUpperCase() || "?"}
-                  </div>
-                  <div className="absolute bottom-0 right-[2px] w-[28px] h-[28px] rounded-full bg-[#48484a] flex items-center justify-center text-[12px] font-medium text-white border-[2px] border-black">
-                    {participants[1]?.[0]?.toUpperCase() || "?"}
-                  </div>
-                </div>
-                <p className="text-[13px] font-normal text-[#e5e5ea] mt-[3px]">{contactName}</p>
-                <p className="text-[11px] text-[#8e8e93]">{participants.length + 1} people</p>
-              </>
-            ) : (
-              <>
-                <div className="w-[40px] h-[40px] rounded-full bg-[#636366] flex items-center justify-center text-[18px] font-medium text-white overflow-hidden">
-                  {contactAvatar ? (
-                    <img src={contactAvatar} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    contactName[0]?.toUpperCase()
-                  )}
-                </div>
-                <p className="text-[13px] font-normal text-[#e5e5ea] mt-[3px]">{contactName}</p>
-              </>
-            )}
+            <div className="w-[40px] h-[40px] rounded-full bg-[#636366] flex items-center justify-center text-[18px] font-medium text-white overflow-hidden">
+              {contactAvatar ? (
+                <img src={contactAvatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                contactName[0]?.toUpperCase()
+              )}
+            </div>
+            <p className="text-[13px] font-normal text-[#e5e5ea] mt-[3px]">{contactName}</p>
           </div>
 
           <div className="text-[#0a84ff] min-w-[50px] flex justify-end">
@@ -115,19 +93,23 @@ export default function IMessageSimulator({
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden px-[16px] pb-3 hide-scrollbar"
-        style={{ backgroundColor: "#000000", paddingTop: isGroup ? "120px" : "100px" }}
+        style={{ backgroundColor: "#000000", paddingTop: "100px" }}
       >
         {(() => {
           let lastMeIdx = -1;
           for (let i = messages.length - 1; i >= 0; i--) {
             if (messages[i].sender === "me") { lastMeIdx = i; break; }
           }
+          let secondLastMeIdx = -1;
+          for (let i = lastMeIdx - 1; i >= 0; i--) {
+            if (messages[i].sender === "me") { secondLastMeIdx = i; break; }
+          }
 
           return messages.map((msg, idx) => {
             const prevMsg = messages[idx - 1];
             const nextMsg = messages[idx + 1];
-            const isLastInGroup = !nextMsg || nextMsg.sender !== msg.sender || (isGroup && nextMsg.senderName !== msg.senderName);
-            const sameSenderAsPrev = prevMsg && prevMsg.sender === msg.sender && (!isGroup || prevMsg.senderName === msg.senderName);
+            const isLastInGroup = !nextMsg || nextMsg.sender !== msg.sender;
+            const sameSenderAsPrev = prevMsg && prevMsg.sender === msg.sender;
             const isMe = msg.sender === "me";
             const marginTop = idx === 0 ? "mt-[20px]" : sameSenderAsPrev ? "mt-[2px]" : "mt-[10px]";
 
@@ -136,20 +118,11 @@ export default function IMessageSimulator({
               : "imsg-no-tail";
 
             const showDelivered = idx === lastMeIdx;
-            const showSenderName = isGroup && !isMe && !sameSenderAsPrev && msg.senderName;
-            const senderColor = msg.senderName ? getParticipantColor(msg.senderName, participants) : undefined;
 
             return (
               <div key={msg.id}>
-                {showSenderName && (
-                  <div className="flex justify-start mt-[6px] mb-[1px] pl-[12px]">
-                    <span className="text-[12px] font-medium" style={{ color: senderColor }}>
-                      {msg.senderName}
-                    </span>
-                  </div>
-                )}
                 <div
-                  className={`flex ${isMe ? "justify-end" : "justify-start"} ${showSenderName ? "" : marginTop} animate-message-in`}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"} ${marginTop} animate-message-in`}
                 >
                   {msg.image ? (
                     <img src={msg.image} alt="" style={{ borderRadius: "1.15rem", maxWidth: "75%", width: 220, objectFit: "cover" as const }} />

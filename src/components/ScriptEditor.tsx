@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check, Users } from "lucide-react";
+import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check } from "lucide-react";
 
 interface Props {
   onPlay: (script: string, speed: number) => void;
@@ -17,8 +17,6 @@ interface Props {
   onImagesChange: (images: Record<string, string>) => void;
   showKeyboard: boolean;
   onShowKeyboardChange: (v: boolean) => void;
-  isGroup: boolean;
-  onIsGroupChange: (v: boolean) => void;
 }
 
 const EXAMPLE_SCRIPT = `me: Hey, what's up?
@@ -30,16 +28,6 @@ me: The one of the guy falling off the bike lol
 them: LMAOOO yeah, that was hilarious
 me: I died laughing
 them: Send me more of those`;
-
-const GROUP_EXAMPLE_SCRIPT = `me: Hey everyone!
-Sarah: Hey! What's the plan for tonight?
-Mike: Let's go to that new restaurant
-me: Sounds good to me
-Sarah: Which one? The Italian place?
-Mike: Yeah, the one downtown
-me: I'm in, what time?
-Sarah: 7pm works for me
-Mike: Same, see you guys there!`;
 
 export default function ScriptEditor({
   onPlay,
@@ -56,8 +44,6 @@ export default function ScriptEditor({
   onImagesChange,
   showKeyboard,
   onShowKeyboardChange,
-  isGroup,
-  onIsGroupChange,
 }: Props) {
   const [script, setScript] = useState(EXAMPLE_SCRIPT);
   const [speed, setSpeed] = useState(1);
@@ -171,28 +157,6 @@ export default function ScriptEditor({
         </div>
       </div>
 
-      {/* Group mode toggle */}
-      <button
-        onClick={() => {
-          const newIsGroup = !isGroup;
-          onIsGroupChange(newIsGroup);
-          setScript(newIsGroup ? GROUP_EXAMPLE_SCRIPT : EXAMPLE_SCRIPT);
-        }}
-        className={`w-full flex items-center justify-between gap-2 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors border ${
-          isGroup
-            ? "bg-primary/10 text-primary border-primary/30"
-            : "bg-muted text-muted-foreground border-border/50 hover:text-foreground"
-        }`}
-      >
-        <span className="flex items-center gap-2">
-          <Users className="w-4 h-4" />
-          Group conversation
-        </span>
-        <span className={`w-8 h-4 rounded-full transition-colors relative flex items-center px-0.5 shrink-0 ${isGroup ? "bg-primary" : "bg-muted-foreground/30"}`} style={{ height: 18 }}>
-          <span className={`w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${isGroup ? "translate-x-[14px]" : "translate-x-0"}`} style={{ width: 14, height: 14 }} />
-        </span>
-      </button>
-
       {/* Script textarea */}
       <div>
         <label className="text-xs font-medium text-muted-foreground mb-1 block">
@@ -203,21 +167,12 @@ export default function ScriptEditor({
           onChange={(e) => setScript(e.target.value)}
           rows={10}
           className="w-full bg-muted border-none rounded-lg px-3 py-2.5 text-sm text-foreground font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder={isGroup ? `me: Your message\nSarah: Her message\nMike: His message` : `me: Your message\nthem: Contact's message`}
+          placeholder={`me: Your message\nthem: Contact's message`}
         />
         <p className="text-[11px] text-muted-foreground mt-1">
-          {isGroup ? (
-            <>
-              Use <code className="bg-muted-foreground/20 px-1 rounded">me:</code> for yourself and{" "}
-              <code className="bg-muted-foreground/20 px-1 rounded">Name:</code> for each participant.
-            </>
-          ) : (
-            <>
-              Use <code className="bg-muted-foreground/20 px-1 rounded">me:</code> and{" "}
-              <code className="bg-muted-foreground/20 px-1 rounded">them:</code> for each message.
-              To send an image: <code className="bg-muted-foreground/20 px-1 rounded">me: photo1</code>
-            </>
-          )}
+          Use <code className="bg-muted-foreground/20 px-1 rounded">me:</code> and{" "}
+          <code className="bg-muted-foreground/20 px-1 rounded">them:</code> for each message.
+          To send an image: <code className="bg-muted-foreground/20 px-1 rounded">me: photo1</code>
         </p>
       </div>
 
