@@ -3,6 +3,7 @@ import { useState, useCallback, useRef } from "react";
 export interface ChatMessage {
   id: number;
   sender: "me" | "them";
+  senderName?: string;
   text: string;
   image?: string;
 }
@@ -10,11 +11,30 @@ export interface ChatMessage {
 export interface ParsedScript {
   contact: string;
   messages: ChatMessage[];
+  isGroup?: boolean;
+  participants?: string[];
 }
 
-export function parseScript(script: string, images?: Record<string, string>): ParsedScript {
+// Predefined colors for group chat participants
+const GROUP_COLORS = [
+  "#0A84FF", // blue
+  "#30D158", // green
+  "#FF453A", // red
+  "#FF9F0A", // orange
+  "#BF5AF2", // purple
+  "#64D2FF", // cyan
+  "#FFD60A", // yellow
+  "#FF375F", // pink
+];
+
+export function getParticipantColor(name: string, participants: string[]): string {
+  const idx = participants.indexOf(name);
+  return GROUP_COLORS[idx % GROUP_COLORS.length];
+}
+
+export function parseScript(script: string, images?: Record<string, string>, isGroup?: boolean): ParsedScript {
   const lines = script.trim().split("\n").filter((l) => l.trim());
-  if (lines.length === 0) return { contact: "Contact", messages: [] };
+  if (lines.length === 0) return { contact: "Contact", messages: [], isGroup };
 
   let contact = "Contact";
   let startIdx = 0;
@@ -25,40 +45,65 @@ export function parseScript(script: string, images?: Record<string, string>): Pa
   }
 
   const messages: ChatMessage[] = [];
+  const participantSet = new Set<string>();
   let id = 0;
 
   for (let i = startIdx; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    let sender: "me" | "them" = "me";
-    let text = line;
+    if (isGroup) {
+      // Group mode: "Name: message" format
+      const colonIdx = line.indexOf(":");
+      if (colonIdx > 0) {
+        const name = line.substring(0, colonIdx).trim();
+        const text = line.substring(colonIdx + 1).trim();
+        const isMe = name.toLowerCase() === "me";
+        const sender: "me" | "them" = isMe ? "me" : "them";
+        const senderName = isMe ? undefined : name;
+        
+        if (senderName) participantSet.add(name);
 
-    if (line.startsWith("me:") || line.startsWith("Me:") || line.startsWith("ME:")) {
-      sender = "me";
-      text = line.substring(3).trim();
-    } else if (line.startsWith("them:") || line.startsWith("Them:") || line.startsWith("THEM:")) {
-      sender = "them";
-      text = line.substring(5).trim();
-    } else if (line.startsWith("1:")) {
-      sender = "me";
-      text = line.substring(2).trim();
-    } else if (line.startsWith("2:")) {
-      sender = "them";
-      text = line.substring(2).trim();
-    }
+        if (text) {
+          const imageUrl = images?.[text.toLowerCase()];
+          if (imageUrl && isMe) {
+            messages.push({ id: id++, sender, senderName, text: "", image: imageUrl });
+          } else {
+            messages.push({ id: id++, sender, senderName, text });
+          }
+        }
+      }
+    } else {
+      // Normal mode
+      let sender: "me" | "them" = "me";
+      let text = line;
 
-    if (text) {
-      const imageUrl = images?.[text.toLowerCase()];
-      if (imageUrl && sender === "me") {
-        messages.push({ id: id++, sender, text: "", image: imageUrl });
-      } else {
-        messages.push({ id: id++, sender, text });
+      if (line.startsWith("me:") || line.startsWith("Me:") || line.startsWith("ME:")) {
+        sender = "me";
+        text = line.substring(3).trim();
+      } else if (line.startsWith("them:") || line.startsWith("Them:") || line.startsWith("THEM:")) {
+        sender = "them";
+        text = line.substring(5).trim();
+      } else if (line.startsWith("1:")) {
+        sender = "me";
+        text = line.substring(2).trim();
+      } else if (line.startsWith("2:")) {
+        sender = "them";
+        text = line.substring(2).trim();
+      }
+
+      if (text) {
+        const imageUrl = images?.[text.toLowerCase()];
+        if (imageUrl && sender === "me") {
+          messages.push({ id: id++, sender, text: "", image: imageUrl });
+        } else {
+          messages.push({ id: id++, sender, text });
+        }
       }
     }
   }
 
-  return { contact, messages };
+  return { contact, messages, isGroup, participants: Array.from(participantSet) };
 }
 
 export function useChatPlayback() {
