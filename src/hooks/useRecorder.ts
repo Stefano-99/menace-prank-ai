@@ -21,83 +21,104 @@ function computeTotalDuration(messages: ChatMessage[], speed: number): number {
   const imagePause = 400 / speed;
   const sendPause = 200 / speed;
 
-  let t = 0;
+  let total = 1000;
+
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
+
     if (msg.image) {
-      t += imagePause;
+      total += imagePause;
     } else {
-      t += charDelay * (msg.text.length + 1);
-      t += sendPause;
+      total += charDelay * (msg.text.length + 1);
+      total += sendPause;
     }
-    if (i < messages.length - 1) t += pauseBetween;
+
+    if (i < messages.length - 1) {
+      total += pauseBetween;
+    }
   }
-  return t;
+
+  return total;
 }
 
-function computeStateAtTime(
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function waitForPaint() {
+  return new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  );
+}
+
+async function playExportState(
   messages: ChatMessage[],
   speed: number,
-  timeMs: number
-): ExportChatState {
+  onState: (state: ExportChatState) => void,
+  shouldCancel: () => boolean
+) {
   const charDelay = 45 / speed;
   const pauseBetween = 600 / speed;
   const imagePause = 400 / speed;
   const sendPause = 200 / speed;
-
-  let t = 0;
-  const visible: ChatMessage[] = [];
+  const visibleMessages: ChatMessage[] = [];
 
   for (let i = 0; i < messages.length; i++) {
+    if (shouldCancel()) return;
+
     const msg = messages[i];
 
     if (msg.image) {
-      const endTime = t + imagePause;
-      if (timeMs < endTime) {
-        return { visibleMessages: [...visible], isTyping: false, typingSender: "me", currentTypingText: "" };
-      }
-      t = endTime;
-      visible.push(msg);
+      await wait(imagePause);
+      if (shouldCancel()) return;
+
+      visibleMessages.push(msg);
+      onState({
+        visibleMessages: [...visibleMessages],
+        isTyping: false,
+        typingSender: msg.sender,
+        currentTypingText: "",
+      });
     } else {
-      const typingEnd = t + charDelay * (msg.text.length + 1);
+      onState({
+        visibleMessages: [...visibleMessages],
+        isTyping: true,
+        typingSender: msg.sender,
+        currentTypingText: "",
+      });
 
-      if (timeMs < typingEnd) {
-        const elapsed = timeMs - t;
-        const charsTyped = Math.min(Math.floor(elapsed / charDelay), msg.text.length);
-        return {
-          visibleMessages: [...visible],
+      for (let c = 0; c <= msg.text.length; c++) {
+        if (shouldCancel()) return;
+
+        onState({
+          visibleMessages: [...visibleMessages],
           isTyping: true,
           typingSender: msg.sender,
-          currentTypingText: msg.text.substring(0, charsTyped),
-        };
+          currentTypingText: msg.text.substring(0, c),
+        });
+
+        await wait(charDelay);
       }
 
-      t = typingEnd;
-      const sendEnd = t + sendPause;
+      if (shouldCancel()) return;
+      await wait(sendPause);
+      if (shouldCancel()) return;
 
-      if (timeMs < sendEnd) {
-        return {
-          visibleMessages: [...visible],
-          isTyping: true,
-          typingSender: msg.sender,
-          currentTypingText: msg.text,
-        };
-      }
-
-      t = sendEnd;
-      visible.push(msg);
+      visibleMessages.push(msg);
+      onState({
+        visibleMessages: [...visibleMessages],
+        isTyping: false,
+        typingSender: msg.sender,
+        currentTypingText: "",
+      });
     }
 
     if (i < messages.length - 1) {
-      const pauseEnd = t + pauseBetween;
-      if (timeMs < pauseEnd) {
-        return { visibleMessages: [...visible], isTyping: false, typingSender: "me", currentTypingText: "" };
-      }
-      t = pauseEnd;
+      await wait(pauseBetween);
     }
   }
 
-  return { visibleMessages: [...visible], isTyping: false, typingSender: "me", currentTypingText: "" };
+  await wait(1000);
 }
 
 export function useRecorder() {
@@ -113,15 +134,20 @@ export function useRecorder() {
       setIsExporting(true);
 
       const FPS = 60;
-      const frameInterval = 1000 / FPS;
-      const totalDuration = computeTotalDuration(messages, speed) + 1000;
-      const totalFrames = Math.ceil(totalDuration / frameInterval);
+      const frameIntervalMs = 1000 / FPS;
+      const totalDuration = computeTotalDuration(messages, speed);
+      const totalFrames = Math.ceil(totalDuration / frameIntervalMs);
 
       setProgress({ current: 0, total: totalFrames });
+      setChatState({
+        visibleMessages: [],
+        isTyping: false,
+        typingSender: "me",
+        currentTypingText: "",
+      });
 
       try {
         const rect = element.getBoundingClientRect();
-        // Scale to 1080p width (portrait: 1080 x proportional height)
         const pixelRatio = 1080 / rect.width;
         const width = 1080;
         const height = Math.round(rect.height * pixelRatio) & ~1;
@@ -145,19 +171,8 @@ export function useRecorder() {
           framerate: FPS,
         });
 
-        for (let i = 0; i < totalFrames; i++) {
-          if (cancelRef.current) break;
-
-          const t = i * frameInterval;
-          const state = computeStateAtTime(messages, speed, t);
-
-          setChatState(state);
-
-          await new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-          );
-
-          const canvas = await toCanvas(element, {
+        const renderCanvas = () =>
+          toCanvas(element, {
             width: rect.width,
             height: rect.height,
             pixelRatio,
@@ -165,14 +180,65 @@ export function useRecorder() {
             skipAutoScale: true,
           });
 
-          const frame = new VideoFrame(canvas, {
-            timestamp: i * (1_000_000 / FPS),
-            duration: 1_000_000 / FPS,
+        let exportFinished = false;
+        const startedAt = performance.now();
+
+        const playbackPromise = playExportState(
+          messages,
+          speed,
+          (state) => setChatState(state),
+          () => cancelRef.current
+        ).finally(() => {
+          exportFinished = true;
+        });
+
+        await waitForPaint();
+
+        let previousCanvas = await renderCanvas();
+        let previousTimestampUs = 0;
+        let encodedFrames = 0;
+
+        while (!exportFinished && !cancelRef.current) {
+          await waitForPaint();
+          const currentCanvas = await renderCanvas();
+          const currentTimestampUs = Math.max(
+            Math.round((performance.now() - startedAt) * 1000),
+            previousTimestampUs + 1
+          );
+
+          const frame = new VideoFrame(previousCanvas, {
+            timestamp: previousTimestampUs,
+            duration: currentTimestampUs - previousTimestampUs,
           });
-          encoder.encode(frame, { keyFrame: i % 60 === 0 });
+          encoder.encode(frame, { keyFrame: encodedFrames % 60 === 0 });
           frame.close();
 
-          setProgress({ current: i + 1, total: totalFrames });
+          previousCanvas = currentCanvas;
+          previousTimestampUs = currentTimestampUs;
+          encodedFrames += 1;
+
+          setProgress({
+            current: Math.min(Math.ceil(currentTimestampUs / 1000 / frameIntervalMs), totalFrames),
+            total: totalFrames,
+          });
+        }
+
+        await playbackPromise;
+
+        if (!cancelRef.current) {
+          const finalTimestampUs = Math.max(
+            Math.round((performance.now() - startedAt) * 1000),
+            previousTimestampUs + 1
+          );
+
+          const finalFrame = new VideoFrame(previousCanvas, {
+            timestamp: previousTimestampUs,
+            duration: finalTimestampUs - previousTimestampUs,
+          });
+          encoder.encode(finalFrame, { keyFrame: encodedFrames % 60 === 0 });
+          finalFrame.close();
+
+          setProgress({ current: totalFrames, total: totalFrames });
         }
 
         await encoder.flush();
