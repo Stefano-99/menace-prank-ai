@@ -27,8 +27,7 @@ function computeTotalDuration(messages: ChatMessage[], speed: number): number {
     if (msg.image) {
       t += imagePause;
     } else {
-      t += charDelay * msg.text.length;
-      t += sendPause;
+      t += charDelay * (msg.text.length + 1);
     }
     if (i < messages.length - 1) t += pauseBetween;
   }
