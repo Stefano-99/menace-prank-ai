@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check } from "lucide-react";
+import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check, Download } from "lucide-react";
 
 interface Props {
   onPlay: (script: string, speed: number) => void;
