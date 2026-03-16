@@ -58,7 +58,7 @@ function computeStateAtTime(
       t = endTime;
       visible.push(msg);
     } else {
-      const typingEnd = t + charDelay * msg.text.length;
+      const typingEnd = t + charDelay * (msg.text.length + 1);
 
       if (timeMs < typingEnd) {
         const elapsed = timeMs - t;
