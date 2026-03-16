@@ -27,7 +27,7 @@ function computeTotalDuration(messages: ChatMessage[], speed: number): number {
     if (msg.image) {
       t += imagePause;
     } else {
-      t += charDelay * msg.text.length;
+      t += charDelay * (msg.text.length + 1);
       t += sendPause;
     }
     if (i < messages.length - 1) t += pauseBetween;
@@ -59,7 +59,7 @@ function computeStateAtTime(
       t = endTime;
       visible.push(msg);
     } else {
-      const typingEnd = t + charDelay * msg.text.length;
+      const typingEnd = t + charDelay * (msg.text.length + 1);
 
       if (timeMs < typingEnd) {
         const elapsed = timeMs - t;
