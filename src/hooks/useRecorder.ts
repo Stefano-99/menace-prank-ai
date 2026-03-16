@@ -121,8 +121,9 @@ export function useRecorder() {
 
       try {
         const rect = element.getBoundingClientRect();
-        const pixelRatio = 1.5;
-        const width = Math.round(rect.width * pixelRatio) & ~1;
+        // Scale to 1080p width (portrait: 1080 x proportional height)
+        const pixelRatio = 1080 / rect.width;
+        const width = 1080;
         const height = Math.round(rect.height * pixelRatio) & ~1;
 
         const target = new ArrayBufferTarget();

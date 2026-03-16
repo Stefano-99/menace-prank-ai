@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check } from "lucide-react";
+import { Play, RotateCcw, Zap, ImagePlus, X, Maximize, UserCircle, Keyboard, Pencil, Check, Download } from "lucide-react";
 
 interface Props {
   onPlay: (script: string, speed: number) => void;
@@ -310,15 +310,25 @@ export default function ScriptEditor({
         </span>
       </button>
 
-      {/* Preview button */}
-      <button
-        onClick={() => onStartPreview(script, speed)}
-        disabled={busy || !script.trim()}
-        className="w-full flex items-center justify-center gap-2 bg-muted text-foreground py-2.5 rounded-lg font-medium text-sm hover:bg-muted/80 transition-colors disabled:opacity-40 border border-border/50"
-      >
-        <Maximize className="w-4 h-4" />
-        Start Preview
-      </button>
+      {/* Preview & Export buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onStartPreview(script, speed)}
+          disabled={busy || !script.trim()}
+          className="flex-1 flex items-center justify-center gap-2 bg-muted text-foreground py-2.5 rounded-lg font-medium text-sm hover:bg-muted/80 transition-colors disabled:opacity-40 border border-border/50"
+        >
+          <Maximize className="w-4 h-4" />
+          Preview
+        </button>
+        <button
+          onClick={() => onExport(script, speed)}
+          disabled={busy || !script.trim()}
+          className="flex-1 flex items-center justify-center gap-2 bg-accent text-accent-foreground py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-40 border border-border/50"
+        >
+          <Download className="w-4 h-4" />
+          Export 1080p
+        </button>
+      </div>
     </div>
   );
 }
